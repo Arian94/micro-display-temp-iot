@@ -170,6 +170,27 @@ void getWeather() {
     }
 }
 
+struct TouchSensor {
+    const uint8_t PIN;
+    bool pressed;
+};
+
+TouchSensor touch_sensor = {D7, false};
+
+// variables to keep track of the timing of recent interrupts
+unsigned long button_time = 0;
+unsigned long last_button_time = 0;
+void IRAM_ATTR touch_sensor_isr() {
+    button_time = millis();
+    if (button_time - last_button_time > 500) {
+        touch_sensor.pressed = !touch_sensor.pressed;
+        last_button_time = button_time;
+        Serial.println("Touch sensor pressed.");
+        display.ssd1306_command(SSD1306_SETCONTRAST);
+        display.ssd1306_command(touch_sensor.pressed ? 2 : 255);
+    }
+}
+
 void setup() {
     Serial.begin(9600);
     // SSD1306_SWITCHCAPVCC = generate display voltage from 3.3V internally
@@ -181,7 +202,8 @@ void setup() {
 
     while (!Serial)
         ;
-
+    delay(2000);
+    Serial.println("temp-iot");
     delay(2000);
     display.clearDisplay();
 
@@ -196,6 +218,8 @@ void setup() {
     delay(2000);  // Pause for 2 seconds
 
     connectToWiFi();
+    pinMode(touch_sensor.PIN, INPUT_PULLUP);
+    attachInterrupt(touch_sensor.PIN, touch_sensor_isr, FALLING);
 }
 
 void loop() {
