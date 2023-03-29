@@ -144,7 +144,6 @@ void getWeather() {
                     display.display();
 
                     Serial.println("Wait 5min before next round...");
-                    delay(300000);
                 } else {
                     char error[50];
                     sprintf(error, "request failed. HTTP Code: %d", httpCode);
@@ -175,19 +174,24 @@ struct TouchSensor {
     bool pressed;
 };
 
-TouchSensor touch_sensor = {D7, false};
-
+TouchSensor touchSensor = {D7, false};
 // variables to keep track of the timing of recent interrupts
-unsigned long button_time = 0;
-unsigned long last_button_time = 0;
-void IRAM_ATTR touch_sensor_isr() {
-    button_time = millis();
-    if (button_time - last_button_time > 500) {
-        touch_sensor.pressed = !touch_sensor.pressed;
-        last_button_time = button_time;
+unsigned long buttonTime = 0;
+unsigned long lastButtonTime = 0;
+bool hasFirstReqSent = false;
+unsigned long reqTime = 0;
+unsigned long lastReqTime = 0;
+bool refreshWeather = false;
+
+void IRAM_ATTR touchSensorIsr() {
+    buttonTime = millis();
+    if (buttonTime - lastButtonTime > 500) {
+        touchSensor.pressed = !touchSensor.pressed;
+        lastButtonTime = buttonTime;
         Serial.println("Touch sensor pressed.");
-        display.ssd1306_command(SSD1306_SETCONTRAST);
-        display.ssd1306_command(touch_sensor.pressed ? 2 : 255);
+        // display.ssd1306_command(SSD1306_SETCONTRAST);
+        // display.ssd1306_command(touchSensor.pressed ? 2 : 255);
+        refreshWeather = true;
     }
 }
 
@@ -218,10 +222,28 @@ void setup() {
     delay(2000);  // Pause for 2 seconds
 
     connectToWiFi();
-    pinMode(touch_sensor.PIN, INPUT_PULLUP);
-    attachInterrupt(touch_sensor.PIN, touch_sensor_isr, FALLING);
+    pinMode(touchSensor.PIN, INPUT_PULLUP);
+    attachInterrupt(touchSensor.PIN, touchSensorIsr, FALLING);
 }
 
 void loop() {
-    getWeather();
+    if (!hasFirstReqSent) {
+        getWeather();
+        hasFirstReqSent = true;
+        return;
+    }
+
+    reqTime = millis();
+    unsigned long time_passed = reqTime - lastReqTime;
+    if (time_passed > 300000) {
+        getWeather();
+        return;
+    }
+
+    if (refreshWeather) {
+        refreshWeather = false;
+        getWeather();
+    }
+
+    delay(1000);
 }
