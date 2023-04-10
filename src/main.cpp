@@ -1,5 +1,6 @@
 #include <Adafruit_GFX.h>
-#include <Adafruit_SSD1306.h>
+#include <Adafruit_ST7735.h>
+#include <Adafruit_ST7789.h>
 #include <Arduino.h>
 #include <ArduinoJson.h>
 #include <ESP8266HTTPClient.h>
@@ -12,22 +13,25 @@ const char *ssid = "MERCUSYS_6A8EBB";
 const char *password = "my name is_aDam";
 const char *weatherAddr = "https://api.open-meteo.com/v1/forecast?latitude=35.69&longitude=51.42&hourly=temperature_2m&daily=temperature_2m_max,temperature_2m_min&timezone=auto";
 
-#define SCREEN_WIDTH 128  // OLED display width, in pixels
-#define SCREEN_HEIGHT 32  // OLED display height, in pixels
+// ST7789 display module connections
+#define display_DC D1   // display DC  pin is connected to NodeMCU pin D1 (GPIO5)
+#define display_RST D2  // display RST pin is connected to NodeMCU pin D2 (GPIO4)
+#define display_CS D8   // display CS  pin is connected to NodeMCU pin D8 (GPIO15)
+// SDA D7 - SCK D5
+Adafruit_ST7789 display = Adafruit_ST7789(display_CS, display_DC, display_RST);
 
-#define OLED_RESET -1        // Reset pin # (or -1 if sharing Arduino reset pin)
-#define SCREEN_ADDRESS 0x3C  ///< See datasheet for Address; 0x3D for 128x64, 0x3C for 128x32
-Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+void clearDisplay() {
+    display.fillScreen(ST7735_ORANGE);
+}
 
 // Connect to WiFi AP
 void connectToWiFi() {
     Serial.println();
     Serial.println("Connecting to WiFi...");
 
-    display.clearDisplay();
-    display.setCursor(0, 1);
-    display.println("Connecting to WiFi");
-    display.display();
+    clearDisplay();
+    display.setCursor(10, 10);
+    display.print("Connecting to WiFi");
 
     WiFi.begin(ssid, password);
 
@@ -58,27 +62,24 @@ float_t getAverage(float_t array[], size_t array_size) {
 }
 
 void displayFailureWithDelay(const char *message, size_t retry_delay = 5) {
-    display.clearDisplay();
+    clearDisplay();
     display.printf(message);
-    display.display();
     delay(2000);
-    display.clearDisplay();
+    clearDisplay();
 
     for (size_t i = retry_delay; i--;) {
         Serial.printf("retrying in %ds\n", i);
-        display.setCursor(0, 2);
+        display.setCursor(10, 10);
         display.printf("retrying in %ds", i);
-        display.display();
         delay(1000);
-        display.clearDisplay();
+        clearDisplay();
     }
 }
 
 void getWeather() {
-    display.clearDisplay();
-    display.setCursor(0, 1);
-    display.println("Getting weather");
-    display.display();
+    clearDisplay();
+    display.setCursor(10, 10);
+    display.print("Getting weather");
 
     if ((WiFi.status() == WL_CONNECTED)) {
         Serial.println("getting weather...");
@@ -138,10 +139,9 @@ void getWeather() {
                     }
                     payloadAsObject.clear();
                     Serial.println(averages_str);
-                    display.clearDisplay();
-                    display.setCursor(0, 0);
+                    clearDisplay();
+                    display.setCursor(10, 10);
                     display.println(averages_str);
-                    display.display();
 
                     Serial.println("Wait 5min before next round...");
                 } else {
@@ -174,7 +174,7 @@ struct TouchSensor {
     bool pressed;
 };
 
-TouchSensor touchSensor = {D7, false};
+TouchSensor touchSensor = {D6, false};
 // variables to keep track of the timing of recent interrupts
 unsigned long buttonTime = 0;
 unsigned long lastButtonTime = 0;
@@ -197,29 +197,21 @@ void IRAM_ATTR touchSensorIsr() {
 
 void setup() {
     Serial.begin(9600);
-    // SSD1306_SWITCHCAPVCC = generate display voltage from 3.3V internally
-    if (!display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS)) {
-        Serial.println(F("SSD1306 allocation failed"));
-        for (;;)
-            ;  // Don't proceed, loop forever
-    }
+
+    display.init(240, 240, SPI_MODE2);  // initialize a ST7735S chip, mini display
+    clearDisplay();
+    display.setRotation(2);
 
     while (!Serial)
         ;
-    delay(2000);
+    delay(1000);
     Serial.println("temp-iot");
-    delay(2000);
-    display.clearDisplay();
 
-    display.setTextSize(1);
-    display.setTextColor(WHITE);
-    display.setCursor(0, 1);
-    // Display static text
-    display.println("Welcome");
-    // Show initial display buffer contents on the screen --
-    // the library initializes this with an Adafruit splash screen.
-    display.display();
+    display.setTextSize(3);
+    display.setCursor(50, 100);
+    display.print("Welcome");
     delay(2000);  // Pause for 2 seconds
+    display.setTextSize(2);
 
     connectToWiFi();
     pinMode(touchSensor.PIN, INPUT_PULLUP);
