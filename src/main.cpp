@@ -9,10 +9,10 @@
 #include <WiFiClientSecureBearSSL.h>
 #include <Wire.h>
 
-const char *ssid = "MERCUSYS_6A8EBB";
-const char *password = "my name is_aDam";
-const char *weatherAddr = "https://api.open-meteo.com/v1/forecast?latitude=35.69&longitude=51.42&hourly=temperature_2m&daily=temperature_2m_max,temperature_2m_min&timezone=auto";
-
+#define ssid "MERCUSYS_6A8EBB"
+#define password ""
+#define weatherAddr "https://api.open-meteo.com/v1/forecast?latitude=35.69&longitude=51.42&hourly=temperature_2m&daily=temperature_2m_max,temperature_2m_min&timezone=auto"
+#define tempSensor PIN_A0
 // ST7789 display module connections
 #define display_DC D1   // display DC  pin is connected to NodeMCU pin D1 (GPIO5)
 #define display_RST D2  // display RST pin is connected to NodeMCU pin D2 (GPIO4)
@@ -48,7 +48,7 @@ void connectToWiFi() {
 
     if (WiFi.status() == WL_CONNECTED) {
         Serial.println(F("WiFi connected!"));
-        Serial.println("IP address: ");
+        Serial.printf("IP address: ");
         Serial.println(WiFi.localIP());
     }
 }
@@ -139,8 +139,16 @@ void getWeather() {
                     }
                     payloadAsObject.clear();
                     Serial.println(averages_str);
+                    int16_t rawVal = analogRead(tempSensor);
+                    int16_t kelvin = rawVal * .298;
+                    int8_t tempC = kelvin - 273;
+
                     clearDisplay();
                     display.setCursor(10, 10);
+                    display.setTextColor(ST7735_GREEN);
+                    display.printf("Room temp: %d\tC\n\n", tempC);
+                    // display.setCursor(10, 30);
+                    display.setTextColor(ST7735_WHITE);
                     display.println(averages_str);
 
                     Serial.println("Wait 5min before next round...");
@@ -198,7 +206,7 @@ void IRAM_ATTR touchSensorIsr() {
 void setup() {
     Serial.begin(9600);
 
-    display.init(240, 240, SPI_MODE2);  // initialize a ST7735S chip, mini display
+    display.init(240, 240, SPI_MODE2);
     clearDisplay();
     display.setRotation(2);
 
@@ -210,7 +218,7 @@ void setup() {
     display.setTextSize(3);
     display.setCursor(50, 100);
     display.print("Welcome");
-    delay(2000);  // Pause for 2 seconds
+    delay(2000);
     display.setTextSize(2);
 
     connectToWiFi();
