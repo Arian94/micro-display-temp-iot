@@ -8,11 +8,12 @@
 #include <SPI.h>
 #include <WiFiClientSecureBearSSL.h>
 #include <Wire.h>
+#include <wifi-passwordp.h>
 
 #define ssid "MERCUSYS_6A8EBB"
-#define password ""
 #define weatherAddr "https://api.open-meteo.com/v1/forecast?latitude=35.69&longitude=51.42&hourly=temperature_2m&daily=temperature_2m_max,temperature_2m_min&timezone=auto"
 #define tempSensor PIN_A0
+
 // ST7789 display module connections
 #define display_DC D1   // display DC  pin is connected to NodeMCU pin D1 (GPIO5)
 #define display_RST D2  // display RST pin is connected to NodeMCU pin D2 (GPIO4)
